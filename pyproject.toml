@@ -16,7 +16,7 @@ dependencies = [
     "jupyter>=1.0.0",
     "plotly>=5.20.0",
     "typed-argument-parser>=1.9.0",
-    "wandb>=0.16.5",
+    "wandb==0.16.0",
     "ruff==0.1.5",
 ]
 readme = "README.md"
