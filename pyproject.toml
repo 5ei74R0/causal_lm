@@ -1,0 +1,73 @@
+[project]
+name = "causal-lm"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "5ei74R0", email = "xxx@xxx.xxx" }
+]
+dependencies = [
+    "torch==2.2.2+cu118",
+    "torchvision==0.17.2+cu118",
+    "marimo>=0.3.5",
+    "datasets>=2.18.0",
+    "evaluate>=0.4.1",
+    "transformers<=4.38.0",
+    "accelerate>=0.28.0",
+    "jupyter>=1.0.0",
+    "plotly>=5.20.0",
+    "typed-argument-parser>=1.9.0",
+    "wandb>=0.16.5",
+    "ruff==0.1.5",
+]
+readme = "README.md"
+requires-python = ">= 3.10"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = []
+
+[[tool.rye.sources]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu118"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/causal_lm"]
+
+# Following settings trace huggingface/transfomers v4.38.0 and are partially modified.
+# ruff==0.1.5
+# (https://github.com/huggingface/transformers/blob/v4.38.0/pyproject.toml)
+[tool.ruff]
+# Never enforce `E501` (line length violations).
+ignore = ["C901", "E501", "E741", "F402", "F823" ]
+select = ["C", "E", "F", "I", "W"]
+line-length = 119
+
+# Ignore import violations in all `__init__.py` files.
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["E402", "F401", "F403", "F811"]
+"src/transformers/file_utils.py" = ["F401"]
+"src/transformers/utils/dummy_*.py" = ["F401"]
+
+[tool.ruff.isort]
+lines-after-imports = 2
+known-first-party = ["causal_lm"]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
