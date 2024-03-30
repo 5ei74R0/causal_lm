@@ -85,12 +85,13 @@ def setup_model(tokenizer, context_length, n_layers) -> GPT2LMHeadModel:
 
 
 def logging(eval_loss, perplexity, loss, lr_scheduler, completed_steps, dbg=False):
-    metrics = {}
-    keys = ["loss-eval", "ppl-eval", "loss-train", "lr", "step"]
-    vals = [eval_loss, perplexity, loss.mean().item(), lr_scheduler.get_lr()[0], completed_steps]
-    for key, value in zip(keys, vals):
-        if value is not None:
-            metrics[key] = value
+    metrics = {
+        "loss-eval": eval_loss,
+        "ppl-eval": perplexity,
+        "loss-train": loss.mean().item(),
+        "lr": lr_scheduler.get_lr()[0],
+        "step": completed_steps,
+    }
     if dbg:
         print(metrics)
     else:
@@ -144,7 +145,7 @@ def run():
         return loss.item(), perplexity.item()
 
     eval_loss, perplexity = evaluate(val_loader)
-    logging(eval_loss, perplexity, None, lr_scheduler, 0, args.dbg)
+    logging(eval_loss, perplexity, torch.tensor([0]), lr_scheduler, 0, args.dbg)
     model.train()
     completed_steps = 0
     baseline_ppl = []
