@@ -28,7 +28,7 @@ class Args:
 
     # training
     train_sampler: Literal["basic", "overlapped"] = "basic"
-    batch_size: int = 32
+    batch_size: int = 128  # must be divisible by gradient_accumulation_steps
     context_length: int = 128
     epochs: int = 2
     gradient_accumulation_steps: int = 4
@@ -84,13 +84,23 @@ def setup_model(tokenizer, context_length, n_layers) -> GPT2LMHeadModel:
     return model
 
 
+def register_metrics(dbg=False):
+    if not dbg:
+        wandb.define_metric("update-steps")
+        # define which metrics will be plotted against it
+        wandb.define_metric("loss-eval", step_metric="update-steps")
+        wandb.define_metric("ppl-eval", step_metric="update-steps")
+        wandb.define_metric("loss-train", step_metric="update-steps")
+        wandb.define_metric("lr", step_metric="update-steps")
+
+
 def logging(eval_loss, perplexity, loss, lr_scheduler, completed_steps, dbg=False):
     metrics = {
         "loss-eval": eval_loss,
         "ppl-eval": perplexity,
         "loss-train": loss.mean().item(),
         "lr": lr_scheduler.get_lr()[0],
-        "step": completed_steps,
+        "update-steps": completed_steps,
     }
     if dbg:
         print(metrics)
@@ -109,10 +119,10 @@ def run():
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     sampler = get_sampler_fn(args.train_sampler, tokenizer, args.context_length, key="text")
     eval_sampler = basic_sampling_fn(tokenizer, args.eval_context_length, key="text")
-    tokenized_datasets = setup_data(sampler, eval_sampler, args.num_workers, args.dbg)
-    train_loader = DataLoader(tokenized_datasets["train"], args.seed, batch_size=args.batch_size)
-    val_loader = DataLoader(tokenized_datasets["valid"], args.seed, batch_size=args.eval_batch_size)
-    test_loader = DataLoader(tokenized_datasets["test"], args.seed, batch_size=args.eval_batch_size)
+    lm_datasets = setup_data(sampler, eval_sampler, args.num_workers, args.dbg)
+    train_loader = DataLoader(lm_datasets["train"], args.seed, batch_size=args.batch_size // args.gradient_accumulation_steps)
+    val_loader = DataLoader(lm_datasets["valid"], args.seed, batch_size=args.eval_batch_size)
+    test_loader = DataLoader(lm_datasets["test"], args.seed, batch_size=args.eval_batch_size)
 
     model = setup_model(tokenizer, args.context_length, args.n_layers)
     accelerator = Accelerator(mixed_precision="bf16")
@@ -160,9 +170,9 @@ def run():
                 accelerator.print(
                     {
                         "lr": lr_scheduler.get_lr(),
-                        "samples": step * batch["input_ids"].size(0),
+                        "samples": completed_steps * args.batch_size,
                         "steps": completed_steps,
-                        "loss/train": loss.sum().item() * args.gradient_accumulation_steps,
+                        "loss/train": loss.mean().item() * args.gradient_accumulation_steps,
                     }
                 )
             loss = loss / args.gradient_accumulation_steps
