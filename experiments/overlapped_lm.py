@@ -145,7 +145,10 @@ def run():
         return loss.item(), perplexity.item()
 
     eval_loss, perplexity = evaluate(val_loader)
-    logging(eval_loss, perplexity, torch.tensor([0]), lr_scheduler, 0, args.dbg)
+    if not args.dbg:
+        wandb.log({"loss-eval": eval_loss, "ppl-eval": perplexity})
+        wandb.watch(model, log="gradients", log_graph=True)
+
     model.train()
     completed_steps = 0
     baseline_ppl = []
