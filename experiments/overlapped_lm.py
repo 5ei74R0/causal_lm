@@ -188,6 +188,9 @@ def run():
         wandb.log({"ppl-final": perplexity, "loss-test": eval_loss})
     print(f"Final perplexity: {perplexity:.2f}")
 
+    if not args.dbg and wandb.run is not None:
+        wandb.finish()
+
 
 if __name__ == "__main__":
     run()
