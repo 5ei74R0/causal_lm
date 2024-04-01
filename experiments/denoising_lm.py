@@ -15,7 +15,7 @@ from transformers.modeling_outputs import BaseModelOutputWithPastAndCrossAttenti
 import wandb
 from causal_lm.data import ReproducibleDataLoader as DataLoader
 from causal_lm.data import basic_sampling_fn, overlapped_sampling_fn
-from causal_lm.loss import interpolation_lm_loss
+from causal_lm.loss import interpolation_lm_loss, lm_loss
 from causal_lm.optim import get_grouped_params
 
 
@@ -445,8 +445,8 @@ def run():
         for step, batch in tqdm(enumerate(train_loader, start=1), total=num_training_steps):
             output_ = model(batch["input_ids"])
             logits = output_.logits
-            # loss = lm_loss(batch["input_ids"], logits)
-            loss = interpolation_lm_loss(batch["input_ids"], logits, noisy_wte, output_.hidden_states)
+            loss = lm_loss(batch["input_ids"], logits)
+            # loss = interpolation_lm_loss(batch["input_ids"], logits, noisy_wte, output_.hidden_states)
             if step % 100 == 0:
                 accelerator.print(
                     {
