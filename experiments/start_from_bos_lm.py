@@ -410,9 +410,9 @@ def run():
     )
 
     num_update_steps_per_epoch = len(train_loader)
-    num_training_steps = args.epochs * num_update_steps_per_epoch
+    num_training_steps = args.epochs * num_update_steps_per_epoch // args.gradient_accumulation_steps
     lr_scheduler = get_scheduler(
-        name="linear",
+        name="cosine",
         optimizer=optimizer,
         num_warmup_steps=1_000,
         num_training_steps=num_training_steps,
@@ -438,7 +438,6 @@ def run():
         wandb.watch(model, log="gradients", log_graph=True)
 
     model.train()
-    noisy_wte = model.transformer.forward.noisy_wte
     completed_steps = 0
     baseline_ppl = []
     for epoch in range(args.epochs):
