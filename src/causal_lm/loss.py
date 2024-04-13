@@ -2,7 +2,7 @@ from torch import Tensor as Tn
 from torch.nn import CrossEntropyLoss, MSELoss
 
 
-def lm_loss(inputs, logits):
+def lm_loss(inputs: Tn, logits: Tn) -> Tn:
     # Shift so that tokens < n predict n
     shift_labels = inputs[..., 1:].contiguous()
     shift_logits = logits[..., :-1, :].contiguous()
@@ -14,14 +14,27 @@ def lm_loss(inputs, logits):
     return loss_per_sample
 
 
-def _interpolate(i_logits, o_logits, step) -> list[Tn]:
+def _interpolate(i_logits: Tn, o_logits: Tn, step: int) -> list[Tn]:
     interpolated = [i_logits]
     for i in range(1, step + 1):
         interpolated.append(i_logits + (o_logits - i_logits) * i / step)
     return interpolated
 
 
-def interpolation_lm_loss(inputs: Tn, logits: Tn, embed_fn, hidden_states: Tn):
+def _interpolate_exp_decay(i_logits: Tn, o_logits: Tn, step: int) -> list[Tn]:
+    interpolated = [i_logits]
+    prev = i_logits
+    direction = o_logits - i_logits
+    length = 2
+    for _ in range(1, step):
+        interpolated.append(prev + direction / length)
+        prev = interpolated[-1]
+        length *= 2
+    interpolated.append(o_logits)
+    return interpolated
+
+
+def interpolation_lm_loss(inputs: Tn, logits: Tn, embed_fn, hidden_states: Tn, exp_decay: bool = False) -> Tn:
     # Shift so that tokens < n predict n
     shift_labels = inputs[..., 1:].contiguous()
     shift_logits = logits[..., :-1, :].contiguous()
@@ -32,7 +45,8 @@ def interpolation_lm_loss(inputs: Tn, logits: Tn, embed_fn, hidden_states: Tn):
     # Calculate noise-to-logits interpolation loss
     in_logits = embed_fn(inputs[..., :-1].contiguous())
     out_logits = embed_fn(shift_labels)
-    interpolated_logits = _interpolate(in_logits, out_logits, len(hidden_states))
+    interpolate_fn = _interpolate if not exp_decay else _interpolate_exp_decay
+    interpolated_logits = interpolate_fn(in_logits, out_logits, len(hidden_states))
     for _hidden, _target in zip(hidden_states[1:], interpolated_logits[1:]):
         shift_hidden = _hidden[..., :-1, :].contiguous()
         mse_val = mse_fn(shift_hidden.view(-1, shift_hidden.size(-1)), _target.view(-1, _target.size(-1)))
